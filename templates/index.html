@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Clone</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f0f0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .whatsapp-container {
+            display: flex;
+            height: 100vh;
+            max-width: 1400px;
+            margin: 0 auto;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 350px;
+            background: #2a2f32;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #3c4043;
+        }
+
+        .sidebar-header {
+            background: #00a884;
+            padding: 15px 20px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .search-container {
+            padding: 10px;
+            background: #2a2f32;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 8px;
+            background: #3c4043;
+            color: white;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .search-box::placeholder {
+            color: #8696a0;
+        }
+
+        .new-chat-btn {
+            margin: 10px;
+            padding: 12px;
+            background: #00a884;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .new-chat-btn:hover {
+            background: #029a7b;
+        }
+
+        .chat-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 10px;
+        }
+
+        .chat-item {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 2px 0;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .chat-item:hover {
+            background: #3c4043;
+        }
+
+        .chat-item.active {
+            background: #3c4043;
+            border-left-color: #00a884;
+        }
+
+        .chat-name {
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .chat-preview {
+            color: #8696a0;
+            font-size: 12px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Chat Area Styles */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .chat-header {
+            background: #00a884;
+            padding: 15px 20px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            min-height: 60px;
+        }
+
+        .chat-header-info h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .chat-header-info .status {
+            font-size: 12px;
+            color: #e8f5e8;
+        }
+
+        .messages-container {
+            flex: 1;
+            background: #e5ddd5;
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="%23ffffff" opacity="0.05"/><circle cx="75" cy="75" r="1" fill="%23ffffff" opacity="0.05"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            word-wrap: break-word;
+            position: relative;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .message.sent {
+            background: #dcf8c6;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.received {
+            background: white;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+        }
+
+        .message-sender {
+            font-weight: 600;
+            color: #00a884;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .message-content {
+            font-size: 14px;
+            line-height: 1.4;
+            margin-bottom: 5px;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #8696a0;
+            text-align: right;
+        }
+
+        .message.sent .message-time::after {
+            content: ' ✓✓';
+            color: #4fc3f7;
+        }
+
+        /* Input Area Styles */
+        .input-area {
+            padding: 15px 20px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .emoji-btn, .attach-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .emoji-btn:hover, .attach-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            outline: none;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .message-input:focus {
+            border-color: #00a884;
+        }
+
+        .send-btn {
+            background: #00a884;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .send-btn:hover {
+            background: #029a7b;
+        }
+
+        .send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Welcome Screen */
+        .welcome-screen {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            background: #f8f9fa;
+            color: #8696a0;
+        }
+
+        .welcome-screen i {
+            font-size: 80px;
+            margin-bottom: 20px;
+            color: #00a884;
+        }
+
+        .welcome-screen h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            font-style: italic;
+            color: #8696a0;
+            font-size: 12px;
+            padding: 10px 20px;
+            background: #f0f0f0;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .modal h3 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: #00a884;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .btn-primary {
+            background: #00a884;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #029a7b;
+        }
+
+        .btn-secondary {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #d32f2f;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: absolute;
+                z-index: 100;
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .chat-area {
+                width: 100%;
+            }
+        }
+
+        /* Scrollbar Styles */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+    </style>
+</head>
+<body>
+    <div class="whatsapp-container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>WhatsApp Clone</h1>
+                <i class="fas fa-ellipsis-v"></i>
+            </div>
+            
+            <div class="search-container">
+                <input type="text" class="search-box" placeholder="Search chats..." id="searchBox">
+            </div>
+            
+            <button class="new-chat-btn" onclick="openNewChatModal()">
+                <i class="fas fa-plus"></i> New Chat
+            </button>
+            
+            <div class="chat-list" id="chatList">
+                <!-- Chat items will be populated here -->
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="chat-area" id="chatArea">
+            <div class="welcome-screen" id="welcomeScreen">
+                <i class="fab fa-whatsapp"></i>
+                <h2>WhatsApp Clone</h2>
+                <p>Select a chat to start messaging</p>
+            </div>
+            
+            <!-- Chat Interface (hidden by default) -->
+            <div id="chatInterface" style="display: none; height: 100%; display: flex; flex-direction: column;">
+                <div class="chat-header" id="chatHeader">
+                    <div class="chat-header-info">
+                        <h2 id="chatTitle">Chat Name</h2>
+                        <div class="status" id="chatStatus">online</div>
+                    </div>
+                </div>
+                
+                <div class="messages-container" id="messagesContainer">
+                    <!-- Messages will be populated here -->
+                </div>
+                
+                <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                    Someone is typing...
+                </div>
+                
+                <div class="input-area">
+                    <button class="emoji-btn" onclick="insertEmoji()">😊</button>
+                    <button class="attach-btn">📎</button>
+                    <input type="text" class="message-input" id="messageInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+                    <button class="send-btn" onclick="sendMessage()" id="sendBtn">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Chat Modal -->
+    <div class="modal" id="newChatModal">
+        <div class="modal-content">
+            <h3>Create New Chat</h3>
+            <div class="form-group">
+                <label for="chatName">Chat Name:</label>
+                <input type="text" id="chatName" placeholder="Enter chat name...">
+            </div>
+            <div class="form-group">
+                <label for="chatType">Chat Type:</label>
+                <select id="chatType">
+                    <option value="personal">Personal</option>
+                    <option value="group">Group</option>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="createNewChat()">Create</button>
+                <button class="btn btn-secondary" onclick="closeNewChatModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let socket = io();
+        let currentChatId = null;
+        let currentUsername = 'You';
+        let chats = [];
+        let typingTimer;
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSocket();
+            loadChats();
+            setupEventListeners();
+        });
+
+        function initializeSocket() {
+            socket.on('connect', function() {
+                console.log('Connected to server');
+            });
+
+            socket.on('new_message', function(data) {
+                if (data.chat_id === currentChatId) {
+                    addMessageToChat(data.message);
+                }
+                updateChatPreview(data.chat_id, data.message);
+            });
+
+            socket.on('user_typing', function(data) {
+                showTypingIndicator(data.username, data.is_typing);
+            });
+
+            socket.on('user_joined', function(data) {
+                console.log(`${data.username} joined the chat`);
+            });
+
+            socket.on('user_left', function(data) {
+                console.log(`${data.username} left the chat`);
+            });
+        }
+
+        function setupEventListeners() {
+            // Search functionality
+            document.getElementById('searchBox').addEventListener('input', function(e) {
+                filterChats(e.target.value);
+            });
+
+            // Message input typing indicator
+            document.getElementById('messageInput').addEventListener('input', function() {
+                if (currentChatId) {
+                    socket.emit('typing', {
+                        chat_id: currentChatId,
+                        username: currentUsername,
+                        is_typing: true
+                    });
+
+                    clearTimeout(typingTimer);
+                    typingTimer = setTimeout(() => {
+                        socket.emit('typing', {
+                            chat_id: currentChatId,
+                            username: currentUsername,
+                            is_typing: false
+                        });
+                    }, 1000);
+                }
+            });
+        }
+
+        async function loadChats() {
+            try {
+                const response = await fetch('/api/chats');
+                chats = await response.json();
+                displayChats(chats);
+            } catch (error) {
+                console.error('Error loading chats:', error);
+            }
+        }
+
+        function displayChats(chatsToShow) {
+            const chatList = document.getElementById('chatList');
+            chatList.innerHTML = '';
+
+            chatsToShow.forEach(chat => {
+                const chatItem = document.createElement('div');
+                chatItem.className = 'chat-item';
+                chatItem.onclick = () => selectChat(chat.chat_id);
+
+                const lastMessage = chat.last_message;
+                const preview = lastMessage ? 
+                    (lastMessage.content.length > 50 ? 
+                        lastMessage.content.substring(0, 50) + '...' : 
+                        lastMessage.content) : 
+                    'No messages yet';
+
+                chatItem.innerHTML = `
+                    <div class="chat-name">${chat.name}</div>
+                    <div class="chat-preview">${preview}</div>
+                `;
+
+                chatList.appendChild(chatItem);
+            });
+        }
+
+        async function selectChat(chatId) {
+            // Update UI
+            document.querySelectorAll('.chat-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.chat-item').classList.add('active');
+
+            // Leave current chat
+            if (currentChatId) {
+                socket.emit('leave_chat', { chat_id: currentChatId });
+            }
+
+            // Join new chat
+            currentChatId = chatId;
+            socket.emit('join_chat', { 
+                chat_id: chatId, 
+                username: currentUsername 
+            });
+
+            // Load chat data
+            const chat = chats.find(c => c.chat_id === chatId);
+            if (chat) {
+                document.getElementById('chatTitle').textContent = chat.name;
+                document.getElementById('chatStatus').textContent = 
+                    chat.chat_type === 'personal' ? 'online' : `${chat.participants.length} participants`;
+            }
+
+            // Load messages
+            await loadMessages(chatId);
+
+            // Show chat interface
+            document.getElementById('welcomeScreen').style.display = 'none';
+            document.getElementById('chatInterface').style.display = 'flex';
+        }
+
+        async function loadMessages(chatId) {
+            try {
+                const response = await fetch(`/api/chats/${chatId}/messages`);
+                const messages = await response.json();
+                
+                const container = document.getElementById('messagesContainer');
+                container.innerHTML = '';
+
+                messages.forEach(message => {
+                    addMessageToChat(message);
+                });
+
+                // Scroll to bottom
+                container.scrollTop = container.scrollHeight;
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        function addMessageToChat(message) {
+            const container = document.getElementById('messagesContainer');
+            const messageDiv = document.createElement('div');
+            
+            const isOwn = message.sender === currentUsername;
+            messageDiv.className = `message ${isOwn ? 'sent' : 'received'}`;
+
+            const timestamp = new Date(message.timestamp).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            messageDiv.innerHTML = `
+                ${!isOwn ? `<div class="message-sender">${message.sender}</div>` : ''}
+                <div class="message-content">${message.content}</div>
+                <div class="message-time">${timestamp}</div>
+            `;
+
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const content = input.value.trim();
+
+            if (!content || !currentChatId) return;
+
+            socket.emit('send_message', {
+                chat_id: currentChatId,
+                content: content,
+                sender: currentUsername
+            });
+
+            input.value = '';
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        function insertEmoji() {
+            const emojis = ['😀', '😂', '😍', '😊', '😎', '😔', '😭', '😡', '👍', '👎', '❤️', '🔥', '💯', '🎉', '👏', '🙏'];
+            const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+            const input = document.getElementById('messageInput');
+            input.value += emoji;
+            input.focus();
+        }
+
+        function filterChats(searchTerm) {
+            const filtered = chats.filter(chat => 
+                chat.name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            displayChats(filtered);
+        }
+
+        function updateChatPreview(chatId, message) {
+            const chat = chats.find(c => c.chat_id === chatId);
+            if (chat) {
+                chat.last_message = message;
+                // Refresh the chat list to show updated preview
+                const searchTerm = document.getElementById('searchBox').value;
+                if (searchTerm) {
+                    filterChats(searchTerm);
+                } else {
+                    displayChats(chats);
+                }
+            }
+        }
+
+        function showTypingIndicator(username, isTyping) {
+            const indicator = document.getElementById('typingIndicator');
+            if (isTyping) {
+                indicator.textContent = `${username} is typing...`;
+                indicator.style.display = 'block';
+            } else {
+                indicator.style.display = 'none';
+            }
+        }
+
+        function openNewChatModal() {
+            document.getElementById('newChatModal').style.display = 'block';
+        }
+
+        function closeNewChatModal() {
+            document.getElementById('newChatModal').style.display = 'none';
+            document.getElementById('chatName').value = '';
+            document.getElementById('chatType').value = 'personal';
+        }
+
+        async function createNewChat() {
+            const name = document.getElementById('chatName').value.trim();
+            const type = document.getElementById('chatType').value;
+
+            if (!name) {
+                alert('Please enter a chat name');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/chats', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, type })
+                });
+
+                if (response.ok) {
+                    const newChat = await response.json();
+                    chats.push(newChat);
+                    displayChats(chats);
+                    closeNewChatModal();
+                    selectChat(newChat.chat_id);
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Failed to create chat');
+                }
+            } catch (error) {
+                console.error('Error creating chat:', error);
+                alert('Failed to create chat');
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('newChatModal');
+            if (event.target === modal) {
+                closeNewChatModal();
+            }
+        }
+    </script>
+</body>
+</html>

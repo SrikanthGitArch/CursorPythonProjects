@@ -1,0 +1,2 @@
+# CursorPythonProjects
+CursorPythonProjects
